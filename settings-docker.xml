@@ -3,12 +3,30 @@
   xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
                       https://maven.apache.org/xsd/settings-1.0.0.xsd">
   <localRepository>/usr/share/maven/ref/repository</localRepository>
-  <mirrors>
-    <mirror>
-      <id>artifactory</id>
-      <mirrorOf>*</mirrorOf>
-      <name>ASIP repository.</name>
-      <url>http://repo.proxy-dev-forge.asip.hst.fluxus.net/artifactory/repo-tnr/</url>
-    </mirror>
-  </mirrors>
+  <profiles>
+    <profile>
+      <id>github</id>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <url>https://repo1.maven.org/maven2</url>
+        </repository>
+        <repository>
+          <id>github</id>
+          <url>https://maven.pkg.github.com/prosanteconnect/psc-ecosystem-components</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+
+  <servers>
+    <server>
+      <id>github-prosanteconnect</id>
+      <username>prosanteconnect</username>
+      <password>${internal.repo.username}</password>
+    </server>
+  </servers>
 </settings>

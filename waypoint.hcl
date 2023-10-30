@@ -19,10 +19,7 @@ runner {
 app "prosanteconnect/pscextract" {
   build {
     use "docker" {
-      build_args = {
-        "proxy_address" = var.proxy_address
-        "PROSANTECONNECT_PACKAGE_GITHUB_TOKEN"="${var.github_token}"}
-      }
+      build_args = {"PROSANTECONNECT_PACKAGE_GITHUB_TOKEN"="${var.github_token}"}
       dockerfile = "${path.app}/${var.dockerfile_path}"
       disable_entrypoint = true
     }
@@ -78,7 +75,7 @@ variable "registry_password" {
 
 variable "dockerfile_path" {
   type = string
-  default = "Dockerfile.ext"
+  default = "Dockerfile"
 }
 
 variable "proxy_address" {

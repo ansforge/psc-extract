@@ -209,7 +209,7 @@
 	<repositories>
 		<repository>
 			<id>github-prosanteconnect</id>
-			<url>https://maven.pkg.github.com/prosanteconnect/psc-ecosystem-components</url>
+			<url>https://maven.pkg.github.com/ansforge/psc-components</url>
 		</repository>
 	</repositories>
 

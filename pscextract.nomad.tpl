@@ -20,9 +20,9 @@ job "pscextract" {
       source          = "vs-${nomad_namespace}-pscextract-data"
     }
 
-    constraint {
+    affinity {
       attribute = "$\u007Bnode.class\u007D"
-      value     = "data"
+      value     = "compute"
     }
 
     network {

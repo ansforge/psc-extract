@@ -11,6 +11,15 @@ job "pscextract" {
   group "pscextract-services" {
     count = "1"
 
+    // Volume portworx CSI
+    volume "pscextract" {
+      attachment_mode = "file-system"
+      access_mode     = "single-node-writer"
+      type            = "csi"
+      read_only       = false
+      source          = "vs-${nomad_namespace}-pscextract-data"
+    }
+
     constraint {
       attribute = "$\u007Bnode.class\u007D"
       value     = "data"
@@ -24,25 +33,16 @@ job "pscextract" {
 
     task "prep-volume" {
       driver = "docker"
+
+      // Monter le volume portworx CSI 
+      volume_mount {
+        volume      = "pscextract"
+        destination = "/app/extract-repo"
+        read_only   = false
+      }
+
       config {
         image = "busybox:latest"
-        mount {
-          type = "volume"
-          target = "/app/extract-repo"
-          source = "${nomad_namespace}-pscextract-data"
-          readonly = false
-          volume_options {
-            no_copy = false
-            driver_config {
-              name = "pxd"
-              options {
-                io_priority = "high"
-                size = 10
-                repl = 2
-              }
-            }
-          }
-        }
         command = "sh"
         args = ["-c", "mkdir -p /app/extract-repo/working-directory && chown -R 1:1 /app/extract-repo"]
       }

@@ -33,19 +33,27 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up JDK 11
       uses: actions/setup-java@v2
       with:
         java-version: '11'
         distribution: 'adopt'
         cache: maven
+
+    - name: maven-settings
+      uses: s4u/maven-settings-action@v2
+      with:
+        servers: '[{"id": "github-prosanteconnect", "username": "${GITHUB_ACTOR}", "password": "${GITHUB_TOKEN}"}]'
+        githubServer: false
+
     - name: Build with Maven
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required to pull api client dependency
       run: mvn -B package --file pom.xml
+
     - name: Publish Test Report
       if: ${{ always() }}
       uses: scacap/action-surefire-report@v1
+
     - name: Run codecov reporter
       uses: codecov/codecov-action@v2
       with:

@@ -100,7 +100,7 @@ class ExtractionControllerTests {
   void singlePageExtractionAndResultConformityTest() throws Exception {
 
     String responseFilename = "multiple-work-situations-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("multiple-work-situations.json")));
@@ -123,7 +123,7 @@ class ExtractionControllerTests {
   @Test
   void multiplePagesExtractionAndResultConformityTest() throws Exception {
     String responseFilename = "multiple-pages-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page1size1.json")));
@@ -158,11 +158,11 @@ class ExtractionControllerTests {
   }
 
   @Test
-  @Disabled
+  @Disabled //FIXME please tell why !!! Disabled tests hsould disappear or get fixed, prefably the latter.
   void emptyPsExtractionTest() throws Exception {
 
     String responseFilename = "empty-ps-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("empty-ps.json")));
@@ -186,7 +186,7 @@ class ExtractionControllerTests {
   void fullyEmptyPsExtractionTest() throws Exception {
 
     String responseFilename = "very-empty-ps-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("very-empty-ps.json")));
@@ -209,7 +209,7 @@ class ExtractionControllerTests {
   @Test
   void generateExtractTest() throws Exception {
     String responseFilename = "multiple-pages-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page1size1.json")));

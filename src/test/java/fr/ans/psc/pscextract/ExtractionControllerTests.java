@@ -42,17 +42,17 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -99,32 +99,21 @@ class ExtractionControllerTests {
   @Test
   void singlePageExtractionAndResultConformityTest() throws Exception {
 
-    String responseFilename = "multiple-work-situations-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
-    byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
-
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("multiple-work-situations.json")));
     httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(410)));
 
     controller.generateExtract(null);
-
     await().until(controllerIsReady(controller));
 
     ResponseEntity<FileSystemResource> response = controller.getFile();
 
-    byte[] responseBytes = getBytesFromResponse(response);
-
-    String expected = new String(expectedResponseBytes, StandardCharsets.UTF_8);
-    String actual = new String(responseBytes, StandardCharsets.UTF_8);
-
+    String expected = getContentAsString("multiple-work-situations-result");
+    String actual = getResponseAsString(response);
     Assertions.assertEquals(expected, actual);
   }
 
   @Test
   void multiplePagesExtractionAndResultConformityTest() throws Exception {
-    String responseFilename = "multiple-pages-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
-    byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page1size1.json")));
     httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page2size1.json")));
@@ -132,16 +121,12 @@ class ExtractionControllerTests {
     httpMockServer.stubFor(get("/v2/ps?page=3&size=1").willReturn(aResponse().withStatus(410)));
 
     controller.generateExtract(1);
-
     await().until(controllerIsReady(controller));
 
     ResponseEntity<FileSystemResource> response = controller.getFile();
 
-    byte[] responseBytes = getBytesFromResponse(response);
-
-    String expected = new String(expectedResponseBytes, StandardCharsets.UTF_8);
-    String actual = new String(responseBytes, StandardCharsets.UTF_8);
-
+    String expected = getContentAsString("multiple-pages-result");
+    String actual = getResponseAsString(response);
     Assertions.assertEquals(expected, actual);
   }
 
@@ -158,59 +143,40 @@ class ExtractionControllerTests {
   }
 
   @Test
-  @Disabled //FIXME please tell why !!! Disabled tests hsould disappear or get fixed, prefably the latter.
+//  @Disabled //FIXME please tell why !!! Disabled tests hsould disappear or get fixed, prefably the latter.
   void emptyPsExtractionTest() throws Exception {
-
-    String responseFilename = "empty-ps-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
-    byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("empty-ps.json")));
     httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(410)));
 
     controller.generateExtract(null);
-
     await().until(controllerIsReady(controller));
 
     ResponseEntity<FileSystemResource> response = controller.getFile();
 
-    byte[] responseBytes = getBytesFromResponse(response);
-
-    String expected = new String(expectedResponseBytes, StandardCharsets.UTF_8);
-    String actual = new String(responseBytes, StandardCharsets.UTF_8);
-
+    String expected = getContentAsString("empty-ps-result");
+    String actual = getResponseAsString(response);
     Assertions.assertEquals(expected, actual);
   }
 
   @Test
   void fullyEmptyPsExtractionTest() throws Exception {
 
-    String responseFilename = "very-empty-ps-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
-    byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
-
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("very-empty-ps.json")));
     httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(410)));
 
     controller.generateExtract(null);
-
     await().until(controllerIsReady(controller));
 
     ResponseEntity<FileSystemResource> response = controller.getFile();
 
-    byte[] responseBytes = getBytesFromResponse(response);
-
-    String expected = new String(expectedResponseBytes, StandardCharsets.UTF_8);
-    String actual = new String(responseBytes, StandardCharsets.UTF_8);
-
+    String expected = getContentAsString("very-empty-ps-result");
+    String actual = getResponseAsString(response);
     Assertions.assertEquals(expected, actual);
   }
 
   @Test
   void generateExtractTest() throws Exception {
-    String responseFilename = "multiple-pages-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath();
-    byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page1size1.json")));
     httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page2size1.json")));
@@ -218,16 +184,12 @@ class ExtractionControllerTests {
     httpMockServer.stubFor(get("/v2/ps?page=3&size=1").willReturn(aResponse().withStatus(410)));
 
     controller.generateExtract(null);
-
     await().until(controllerIsReady(controller));
 
     ResponseEntity<FileSystemResource> response = controller.getFile();
 
-    byte[] responseBytes = getBytesFromResponse(response);
-
-    String expected = new String(expectedResponseBytes, StandardCharsets.UTF_8);
-    String actual = new String(responseBytes, StandardCharsets.UTF_8);
-
+    String expected = getContentAsString("multiple-pages-result");
+    String actual = getResponseAsString(response);
     Assertions.assertEquals(expected, actual);
   }
 
@@ -250,7 +212,7 @@ class ExtractionControllerTests {
     assertEquals(responseFailure.getStatusCode(), HttpStatus.CONFLICT);
   }
 
-  private byte[] getBytesFromResponse(ResponseEntity<FileSystemResource> response) throws IOException {
+  private String getResponseAsString(ResponseEntity<FileSystemResource> response) throws IOException {
     ZipFile zipFile = new ZipFile(Objects.requireNonNull(response.getBody()).getFile());
     Enumeration<? extends ZipEntry> enumeration = zipFile.entries();
     InputStream stream = null;
@@ -264,7 +226,17 @@ class ExtractionControllerTests {
 
     zipFile.close();
     stream.close();
-    return responseBytes;
+    return getNormalizedEOL(new String(responseBytes, StandardCharsets.UTF_8));
+  }
+
+  private String getContentAsString(String responseFilename) throws IOException {
+    Path responsePath = new File(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt").getFile()).toPath();
+    byte[] expectedResponseBytes = Files.readAllBytes(responsePath);
+    return getNormalizedEOL(new String(expectedResponseBytes, StandardCharsets.UTF_8));
+  }
+
+  private String getNormalizedEOL(String content) {
+    return content.replaceAll("\\r\\n?", "\n");
   }
 
   private Callable<Boolean> controllerIsReady(ExtractionController controller) {

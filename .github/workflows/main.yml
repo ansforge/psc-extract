@@ -40,6 +40,8 @@ jobs:
         distribution: 'adopt'
         cache: maven
     - name: Build with Maven
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required to pull api client dependency
       run: mvn -B package --file pom.xml
     - name: Publish Test Report
       if: ${{ always() }}

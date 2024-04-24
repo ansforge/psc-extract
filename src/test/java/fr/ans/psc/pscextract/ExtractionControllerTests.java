@@ -60,6 +60,11 @@ import java.util.zip.ZipFile;
 @ContextConfiguration(classes = PscextractApplication.class)
 @AutoConfigureMockMvc
 class ExtractionControllerTests {
+  /* 
+   * Target the copy from test-ressource stage rather than the sources, 
+   * to avoid creating bogus diff during tests.
+   */
+  private static final String TEST_RESOURCE_DIRECTORY = "target/test-classes/work";
 
   @Autowired
   private ExtractionController controller;
@@ -83,8 +88,8 @@ class ExtractionControllerTests {
   @DynamicPropertySource
   static void registerPgProperties(DynamicPropertyRegistry propertiesRegistry) {
     propertiesRegistry.add("api.base.url", () -> httpMockServer.baseUrl());
-    propertiesRegistry.add("working.directory", () -> "src/test/resources/work");
-    propertiesRegistry.add("files.directory", () -> "src/test/resources/work");
+    propertiesRegistry.add("working.directory", () -> TEST_RESOURCE_DIRECTORY);
+    propertiesRegistry.add("files.directory", () -> TEST_RESOURCE_DIRECTORY);
     propertiesRegistry.add("page.size", () -> "1");
     propertiesRegistry.add("first.name.count", () -> "3");
 

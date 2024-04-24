@@ -252,6 +252,13 @@ public class TransformationService {
         extractTime = dtf.format(now);
     }
 
+    /**
+     * Beware the broken naming : this method yields a ZIP archive !
+     * 
+     * @param extractionController
+     * @return
+     * @throws IOException 
+     */
     public File extractToCsv(ExtractionController extractionController) throws IOException {
         File tempExtractFile = File.createTempFile("tempExtract", "tmp");
         BufferedWriter bw = Files.newBufferedWriter(tempExtractFile.toPath(), StandardCharsets.UTF_8);

@@ -49,6 +49,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @Service
 public class TransformationService {
@@ -321,20 +323,29 @@ public class TransformationService {
             log.info("BufferedWriter closed");
         }
 
-        InputStream fileContent = new FileInputStream(tempExtractFile);
+        try(
+             InputStream fileContent = new FileInputStream(tempExtractFile);
+             ZipOutputStream zos = new ZipOutputStream(
+                 new FileOutputStream(
+                     FileNamesUtil.getFilePath(
+                         extractionController.getWorkingDirectory(), 
+                         getFileNameWithExtension(extractionController.getZIP_EXTENSION())
+                     )
+                 )
+             );
+           ) {
+          
+          log.info("Zipping up the extract file...");
 
-        log.info("Zipping up the extract file...");
-        ZipEntry zipEntry = new ZipEntry(getFileNameWithExtension(extractionController.getTXT_EXTENSION()));
-        zipEntry.setTime(System.currentTimeMillis());
-        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(FileNamesUtil.getFilePath(extractionController.getWorkingDirectory(), getFileNameWithExtension(extractionController.getZIP_EXTENSION()))));
-        zos.putNextEntry(zipEntry);
-        StreamUtils.copy(fileContent, zos);
+          MessageDigest extractEntryDigester = writeExtractEntry(extractionController, zos, fileContent);
 
-        fileContent.close();
-        zos.closeEntry();
-        zos.finish();
-        zos.close();
+          writeDigestEntry(zos, extractEntryDigester);
 
+          zos.finish();
+
+        } catch (NoSuchAlgorithmException ex) {
+          throw new RuntimeException("No SHA256 digest support in the current java runtime - please fix this.",ex);
+        }
 
         if (tempExtractFile.delete()) {
             log.info("Temp file at " + tempExtractFile.getAbsolutePath() + " deleted");
@@ -358,6 +369,35 @@ public class TransformationService {
         return FileNamesUtil.getLatestExtract(extractionController.getFilesDirectory(),
                 getFileNameWithExtension(extractionController.getZIP_EXTENSION()));
     }
+
+  private void writeDigestEntry(final ZipOutputStream zos, MessageDigest extractEntryDigester) throws IOException {
+    ZipEntry digestEntry = new ZipEntry(getFileNameWithExtension(DIGEST_FILE_EXTENSION));
+    zos.putNextEntry(digestEntry);
+    byte[] hash = extractEntryDigester.digest();
+    for(int i=0;i<hash.length;i++){
+      Integer currentByte = Byte.toUnsignedInt(hash[i]);
+      zos.write(Integer.toHexString(currentByte).getBytes());
+    }
+    zos.closeEntry();
+  }
+
+  private MessageDigest writeExtractEntry(ExtractionController extractionController, final ZipOutputStream zos, final InputStream fileContent) throws IOException, NoSuchAlgorithmException {
+    ZipEntry zipEntry = new ZipEntry(getFileNameWithExtension(extractionController.getTXT_EXTENSION()));
+    zipEntry.setTime(System.currentTimeMillis());
+    zos.putNextEntry(zipEntry);
+    byte[] buffer=new byte[4096];
+    int nbCopied = fileContent.read(buffer);
+    MessageDigest digestEngine=MessageDigest.getInstance("SHA256");
+    while(nbCopied>=0){
+      zos.write(buffer, 0, nbCopied);
+      // Why read twice when we can digest on the way.
+      digestEngine.update(buffer, 0, nbCopied);
+      nbCopied = fileContent.read(buffer);
+    }
+    zos.closeEntry();
+    return digestEngine;
+  }
+  private static final String DIGEST_FILE_EXTENSION = ".sha256";
 
     private String getCsvHeader() {
         return "Type d'identifiant PP|Identifiant PP|Identification nationale PP|Nom de famille|Prénoms|" +

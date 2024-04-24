@@ -15,10 +15,6 @@
  */
 package fr.ans.psc.pscextract.service;
 
-import com.univocity.parsers.common.ParsingContext;
-import com.univocity.parsers.common.processor.ObjectRowProcessor;
-import com.univocity.parsers.csv.CsvParser;
-import com.univocity.parsers.csv.CsvParserSettings;
 import fr.ans.psc.model.Expertise;
 import fr.ans.psc.model.FirstName;
 import fr.ans.psc.model.Profession;
@@ -34,9 +30,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestClientException;
 
 import java.io.*;
 import java.math.BigDecimal;

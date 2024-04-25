@@ -34,6 +34,7 @@
 
 	<properties>
 		<java.version>11</java.version>
+                <filepath.starting.point>1</filepath.starting.point>
 	</properties>
 
 	<dependencies>
@@ -124,6 +125,12 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<argLine>-Xmx4g</argLine>
+                                        <systemProperties>
+                                          <property>
+                                            <name>filepath.starting.point</name>
+                                            <value>${filepath.starting.point}</value>
+                                          </property>
+                                        </systemProperties>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -212,5 +219,21 @@
 			<url>https://maven.pkg.github.com/ansforge/psc-components</url>
 		</repository>
 	</repositories>
-
+        <profiles>
+          <!-- 
+            This profile is a minimal workaround to fix some broken tests in maintenance branches.
+            A much better FIX has already been merged intop main, but we want minimal change here.
+          -->
+          <profile>
+            <id>linux-workaround</id>
+            <activation>
+              <os>
+                <family>unix</family>
+              </os>
+            </activation>
+            <properties>
+              <filepath.starting.point>0</filepath.starting.point>
+            </properties>
+          </profile>
+        </profiles>
 </project>

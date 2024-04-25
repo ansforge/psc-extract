@@ -31,6 +31,11 @@
 	<inceptionYear>2022-2023</inceptionYear>
 	<description>Demo project for Spring Boot</description>
 
+        <scm>
+          <connection>scm:git:${project.basedir}</connection>
+          <tag>HEAD</tag>
+        </scm>
+
 	<properties>
 		<java.version>11</java.version>
 	</properties>

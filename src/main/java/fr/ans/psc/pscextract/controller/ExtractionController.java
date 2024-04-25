@@ -154,6 +154,7 @@ public class ExtractionController {
           File latestExtract = transformationService.extractToCsv(this);
           FileNamesUtil.cleanup(filesDirectory, extractTestName);
 
+          // TODO : this is java not C. Please use exceptions, not return code checking.
           if (latestExtract != null) {
             emailService.sendSimpleMessage("PSCEXTRACT - sécurisation effectuée", latestExtract);
           }

@@ -28,7 +28,7 @@
 	<artifactId>pscextract</artifactId>
 	<version>0.2.0-SNAPSHOT</version>
 	<name>pscextract</name>
-	<inceptionYear>2022-2023</inceptionYear>
+	<inceptionYear>2022-2024</inceptionYear>
 	<description>Demo project for Spring Boot</description>
 
         <scm>

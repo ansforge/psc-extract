@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (C) 2022-2023 Agence du Numérique en Santé (ANS) (https://esante.gouv.fr)
+    Copyright (C) 2022-2024 Agence du Numérique en Santé (ANS) (https://esante.gouv.fr)
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -16,24 +16,29 @@
     limitations under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.5.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>fr.ans.psc</groupId>
 	<artifactId>pscextract</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1.0</version>
 	<name>pscextract</name>
-	<inceptionYear>2022-2023</inceptionYear>
+	<inceptionYear>2022-2024</inceptionYear>
 	<description>Demo project for Spring Boot</description>
+
+        <scm>
+          <connection>scm:git:${project.basedir}</connection>
+          <tag>0.1.0</tag>
+        </scm>
 
 	<properties>
 		<java.version>11</java.version>
+                <filepath.starting.point>1</filepath.starting.point>
 	</properties>
 
 	<dependencies>
@@ -124,6 +129,12 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<argLine>-Xmx4g</argLine>
+                                        <systemProperties>
+                                          <property>
+                                            <name>filepath.starting.point</name>
+                                            <value>${filepath.starting.point}</value>
+                                          </property>
+                                        </systemProperties>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -212,5 +223,21 @@
 			<url>https://maven.pkg.github.com/ansforge/psc-components</url>
 		</repository>
 	</repositories>
-
+        <profiles>
+          <!-- 
+            This profile is a minimal workaround to fix some broken tests in maintenance branches.
+            A much better FIX has already been merged intop main, but we want minimal change here.
+          -->
+          <profile>
+            <id>linux-workaround</id>
+            <activation>
+              <os>
+                <family>unix</family>
+              </os>
+            </activation>
+            <properties>
+              <filepath.starting.point>0</filepath.starting.point>
+            </properties>
+          </profile>
+        </profiles>
 </project>

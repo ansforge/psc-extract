@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Agence du Numérique en Santé (ANS) (https://esante.gouv.fr)
+ * Copyright (C) 2022-2024 Agence du Numérique en Santé (ANS) (https://esante.gouv.fr)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +20,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import fr.ans.psc.pscextract.controller.ExtractionController;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,21 +42,24 @@ import org.springframework.test.context.DynamicPropertySource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import org.junit.jupiter.api.Disabled;
 
 @SpringBootTest
 @ContextConfiguration(classes = PscextractApplication.class)
 @AutoConfigureMockMvc
 class ExtractionControllerTests {
+  
+  private static final int FILE_PATH_STARTING_POINT = Integer.parseInt(System.getProperty("filepath.starting.point"));
 
   @Autowired
   private ExtractionController controller;
@@ -100,7 +100,7 @@ class ExtractionControllerTests {
   void singlePageExtractionAndResultConformityTest() throws Exception {
 
     String responseFilename = "multiple-work-situations-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(FILE_PATH_STARTING_POINT);
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("multiple-work-situations.json")));
@@ -123,7 +123,7 @@ class ExtractionControllerTests {
   @Test
   void multiplePagesExtractionAndResultConformityTest() throws Exception {
     String responseFilename = "multiple-pages-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(FILE_PATH_STARTING_POINT);
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page1size1.json")));
@@ -186,7 +186,7 @@ class ExtractionControllerTests {
   void fullyEmptyPsExtractionTest() throws Exception {
 
     String responseFilename = "very-empty-ps-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(FILE_PATH_STARTING_POINT);
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("very-empty-ps.json")));
@@ -209,7 +209,7 @@ class ExtractionControllerTests {
   @Test
   void generateExtractTest() throws Exception {
     String responseFilename = "multiple-pages-result";
-    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(1);
+    String responsePath = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + ".txt")).getPath().substring(FILE_PATH_STARTING_POINT);
     byte[] expectedResponseBytes = Files.readAllBytes(Paths.get(responsePath));
 
     httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page1size1.json")));
@@ -227,6 +227,24 @@ class ExtractionControllerTests {
 
     String expected = new String(expectedResponseBytes, StandardCharsets.UTF_8);
     String actual = new String(responseBytes, StandardCharsets.UTF_8);
+
+    Assertions.assertEquals(expected, actual);
+  }
+  
+  @Test
+  public void shouldJoinExtractSha256Digest() throws IOException {
+    httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page1size1.json")));
+    httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page2size1.json")));
+    httpMockServer.stubFor(get("/v2/ps?page=2&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page3size1.json")));
+    httpMockServer.stubFor(get("/v2/ps?page=3&size=1").willReturn(aResponse().withStatus(410)));
+
+    controller.generateExtract(null);
+    await().until(controllerIsReady(controller));
+
+    ResponseEntity<FileSystemResource> response = controller.getFile();
+    
+    String expected = getTxtTestResourceAsString("multiple-pages-result", ".sha256");
+    String actual = getEntryContentAsString(response, ".sha256");
 
     Assertions.assertEquals(expected, actual);
   }
@@ -250,14 +268,30 @@ class ExtractionControllerTests {
     assertEquals(responseFailure.getStatusCode(), HttpStatus.CONFLICT);
   }
 
+ private java.lang.String getDataEntryAsString(ResponseEntity<FileSystemResource> response) throws java.io.IOException {
+    return getEntryContentAsString(response, ".txt");
+  }
+
+  private String getEntryContentAsString(ResponseEntity<FileSystemResource> response, final String extension) throws IOException {
+    return getNormalizedEOL(
+        new String(
+            getBytesFromResponse(response, extension),
+            StandardCharsets.UTF_8));
+  }
+
   private byte[] getBytesFromResponse(ResponseEntity<FileSystemResource> response) throws IOException {
+     return getBytesFromResponse(response, ".txt");
+  }
+
+  private byte[] getBytesFromResponse(ResponseEntity<FileSystemResource> response, String extension) throws IOException {
     ZipFile zipFile = new ZipFile(Objects.requireNonNull(response.getBody()).getFile());
     Enumeration<? extends ZipEntry> enumeration = zipFile.entries();
     InputStream stream = null;
-
     while (enumeration.hasMoreElements()) {
       ZipEntry zipEntry = enumeration.nextElement();
-      stream = zipFile.getInputStream(zipEntry);
+      if(zipEntry.getName().endsWith(extension)){
+        stream = zipFile.getInputStream(zipEntry);
+      }
     }
     assert stream != null;
     byte[] responseBytes = stream.readAllBytes();
@@ -265,6 +299,20 @@ class ExtractionControllerTests {
     zipFile.close();
     stream.close();
     return responseBytes;
+  }
+
+  private String getContentAsString(String responseFilename) throws IOException {
+    return getTxtTestResourceAsString(responseFilename, ".txt");
+  }
+
+  private String getTxtTestResourceAsString(String responseFilename, final String txtExtension) throws IOException {
+    Path responsePath = new File(Thread.currentThread().getContextClassLoader().getResource("wiremock/__files/" + responseFilename + txtExtension).getFile()).toPath();
+    byte[] expectedResponseBytes = Files.readAllBytes(responsePath);
+    return getNormalizedEOL(new String(expectedResponseBytes, StandardCharsets.UTF_8));
+  }
+
+  private String getNormalizedEOL(String content) {
+    return content.replaceAll("\\r\\n?", "\n");
   }
 
   private Callable<Boolean> controllerIsReady(ExtractionController controller) {

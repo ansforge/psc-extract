@@ -163,9 +163,16 @@ public class ExtractionController {
           }
         } catch (Exception e) {
           log.error("Exception raised :", e);
+          emailService.sendSimpleMessage("PSCEXTRACT - sécurisation échouée", null);
         } catch (Error e) {
           log.error("Exception raised :", e);
-          throw e;
+            try {
+              log.error("Exception raised :", e);
+              emailService.sendSimpleMessage("PSCEXTRACT - sécurisation échouée", null);
+            } catch (Exception mailEx) {
+              e.addSuppressed(mailEx);
+            }
+            throw e;
         } finally {
             busy = false;
         }

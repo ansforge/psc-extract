@@ -345,7 +345,7 @@ public class TransformationService {
           zos.finish();
 
         } catch (NoSuchAlgorithmException ex) {
-          throw new RuntimeException("No SHA256 digest support in the current java runtime - please fix this.",ex);
+          throw new RuntimeException("No SHA256 digest support in the current java runtime - please fix this."+ex.getMessage(),ex);
         }
 
         if (tempExtractFile.delete()) {

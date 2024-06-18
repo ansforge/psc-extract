@@ -345,7 +345,7 @@ public class TransformationService {
           zos.finish();
 
         } catch (NoSuchAlgorithmException ex) {
-          throw new RuntimeException("No SHA256 digest support in the current java runtime - please fix this.",ex);
+          throw new RuntimeException("No SHA256 digest support in the current java runtime - please fix this."+ex.getMessage(),ex);
         }
 
         if (tempExtractFile.delete()) {
@@ -376,8 +376,7 @@ public class TransformationService {
     zos.putNextEntry(digestEntry);
     byte[] hash = extractEntryDigester.digest();
     for(int i=0;i<hash.length;i++){
-      Integer currentByte = Byte.toUnsignedInt(hash[i]);
-      zos.write(Integer.toHexString(currentByte).getBytes());
+      zos.write(String.format("%02x",hash[i]).getBytes());
     }
     zos.closeEntry();
   }
@@ -388,7 +387,7 @@ public class TransformationService {
     zos.putNextEntry(zipEntry);
     byte[] buffer=new byte[4096];
     int nbCopied = fileContent.read(buffer);
-    MessageDigest digestEngine=MessageDigest.getInstance("SHA256");
+    MessageDigest digestEngine=MessageDigest.getInstance("SHA-256");
     while(nbCopied>=0){
       zos.write(buffer, 0, nbCopied);
       // Why read twice when we can digest on the way.

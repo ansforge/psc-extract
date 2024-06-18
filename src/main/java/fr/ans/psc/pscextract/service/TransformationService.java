@@ -376,8 +376,7 @@ public class TransformationService {
     zos.putNextEntry(digestEntry);
     byte[] hash = extractEntryDigester.digest();
     for(int i=0;i<hash.length;i++){
-      Integer currentByte = Byte.toUnsignedInt(hash[i]);
-      zos.write(Integer.toHexString(currentByte).getBytes());
+      zos.write(String.format("%02x",hash[i]).getBytes());
     }
     zos.closeEntry();
   }

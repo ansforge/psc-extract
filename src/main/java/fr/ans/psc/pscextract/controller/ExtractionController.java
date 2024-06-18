@@ -161,8 +161,11 @@ public class ExtractionController {
           else {
             emailService.sendSimpleMessage("PSCEXTRACT - sécurisation échouée", null);
           }
-        } catch (IOException e) {
+        } catch (Exception e) {
           log.error("Exception raised :", e);
+        } catch (Error e) {
+          log.error("Exception raised :", e);
+          throw e;
         } finally {
             busy = false;
         }

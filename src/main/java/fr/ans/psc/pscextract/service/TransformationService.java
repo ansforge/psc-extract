@@ -388,7 +388,7 @@ public class TransformationService {
     zos.putNextEntry(zipEntry);
     byte[] buffer=new byte[4096];
     int nbCopied = fileContent.read(buffer);
-    MessageDigest digestEngine=MessageDigest.getInstance("SHA256");
+    MessageDigest digestEngine=MessageDigest.getInstance("SHA-256");
     while(nbCopied>=0){
       zos.write(buffer, 0, nbCopied);
       // Why read twice when we can digest on the way.

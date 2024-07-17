@@ -203,6 +203,11 @@ public class ExtractionController {
 
   }
 
+  @GetMapping(value = "/busy-check", produces = MediaType.APPLICATION_JSON_VALUE)
+  public boolean checkControllerIsBusy() {
+    return busy;
+  }
+
   public String getZIP_EXTENSION() {
     return ".zip";
   }

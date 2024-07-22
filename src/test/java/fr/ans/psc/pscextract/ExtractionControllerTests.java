@@ -230,6 +230,25 @@ class ExtractionControllerTests {
     assertEquals(responseFailure.getStatusCode(), HttpStatus.CONFLICT);
   }
 
+  @Test
+  void verifyBusyStateConformityTest() {
+    httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("multiple-work-situations.json")));
+    httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(410)));
+
+    boolean busy = controller.checkControllerIsBusy();
+    Assertions.assertFalse(busy);
+
+    controller.generateExtract(null);
+
+    await().until(controllerIsBusy(controller));
+    busy = controller.checkControllerIsBusy();
+    Assertions.assertTrue(busy);
+
+    await().until(controllerIsReady(controller));
+    busy = controller.checkControllerIsBusy();
+    Assertions.assertFalse(busy);
+  }
+
   private java.lang.String getDataEntryAsString(ResponseEntity<FileSystemResource> response) throws java.io.IOException {
     return getEntryContentAsString(response, ".txt");
   }
@@ -267,5 +286,8 @@ class ExtractionControllerTests {
 
   private Callable<Boolean> controllerIsReady(ExtractionController controller) {
     return () -> !controller.isBusy();
+  }
+  private Callable<Boolean> controllerIsBusy(ExtractionController controller) {
+    return () -> (Boolean) controller.checkControllerIsBusy();
   }
 }

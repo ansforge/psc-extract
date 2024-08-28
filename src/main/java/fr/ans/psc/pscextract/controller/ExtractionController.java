@@ -35,11 +35,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -136,6 +137,27 @@ public class ExtractionController {
       return new ResponseEntity<>(null, null, HttpStatus.NOT_FOUND);
     }
 
+  }
+
+  @PostMapping(value = "/upload/test", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<Void> uploadDemoExtractFile(@RequestParam("testFile") MultipartFile file) throws IOException {
+    File extractTestFile = new File(FileNamesUtil.getFilePath(filesDirectory, extractTestName));
+    if (extractTestFile.exists()) {
+      log.warn("Un fichier test existe déjà sur le serveur. Suppression du fichier");
+        Files.delete(extractTestFile.toPath());
+    }
+
+    try {
+      file.transferTo(extractTestFile);
+      log.info("Fichier de test téléversé avec succès");
+      return new ResponseEntity<>(HttpStatus.ACCEPTED);
+    } catch (IOException e) {
+      log.error("Error uploading file", e);
+      if (extractTestFile.exists()) {
+        Files.delete(extractTestFile.toPath());
+      }
+      return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   @PostMapping(value = "/generate-extract")

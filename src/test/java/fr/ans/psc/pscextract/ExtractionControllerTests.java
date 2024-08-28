@@ -18,9 +18,11 @@ package fr.ans.psc.pscextract;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import fr.ans.psc.pscextract.controller.ExtractionController;
@@ -33,15 +35,20 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,6 +71,9 @@ class ExtractionControllerTests {
 
   @Autowired
   private ExtractionController controller;
+
+  @Autowired
+  private MockMvc mockMvc;
 
   /**
    * Countdown latch
@@ -175,6 +185,33 @@ class ExtractionControllerTests {
     String actual = getDataEntryAsString(response);
     Assertions.assertEquals(expected, actual);
   }
+
+  @Test
+  void testUploadDemoExtractFile() throws Exception {
+    String filesDirectory = "target/test-classes/work";
+    controller.extractTestName = "test.zip";
+    String testContent = "Hello, World!";
+    File extractTestFile = new File(filesDirectory, controller.extractTestName);
+
+    Field filesDirectoryField = controller.getClass().getDeclaredField("filesDirectory");
+    filesDirectoryField.setAccessible(true);
+    filesDirectoryField.set(controller, filesDirectory);
+
+
+    MockMultipartFile testFile = new MockMultipartFile("testFile", "test.zip", MediaType.TEXT_PLAIN_VALUE, testContent.getBytes());
+
+    mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/test")
+                    .file(testFile))
+            .andExpect(status().isAccepted());
+
+
+    assertThat(extractTestFile).exists();
+    assertThat(Files.readString(extractTestFile.toPath())).isEqualTo(testContent);
+
+    // cleanup
+    Files.delete(extractTestFile.toPath());
+  }
+
 
   @Test
   void generateExtractTest() throws Exception {

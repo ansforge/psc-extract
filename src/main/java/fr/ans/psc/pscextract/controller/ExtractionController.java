@@ -144,7 +144,7 @@ public class ExtractionController {
     File extractTestFile = new File(FileNamesUtil.getFilePath(filesDirectory, extractTestName));
     if (extractTestFile.exists()) {
       log.warn("Un fichier test existe déjà sur le serveur. Suppression du fichier");
-        Files.delete(extractTestFile.toPath());
+      Files.delete(extractTestFile.toPath());
     }
 
     try {

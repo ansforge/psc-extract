@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Agence du Numérique en Santé (ANS) (https://esante.gouv.fr)
+ * Copyright (C) 2022-2024 Agence du Numérique en Santé (ANS) (https://esante.gouv.fr)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,6 @@
  */
 package fr.ans.psc.pscextract.service;
 
-import com.univocity.parsers.common.ParsingContext;
-import com.univocity.parsers.common.processor.ObjectRowProcessor;
-import com.univocity.parsers.csv.CsvParser;
-import com.univocity.parsers.csv.CsvParserSettings;
 import fr.ans.psc.model.Expertise;
 import fr.ans.psc.model.FirstName;
 import fr.ans.psc.model.Profession;
@@ -34,9 +30,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestClientException;
 
 import java.io.*;
 import java.math.BigDecimal;
@@ -49,6 +43,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @Service
 public class TransformationService {
@@ -250,6 +246,13 @@ public class TransformationService {
         extractTime = dtf.format(now);
     }
 
+    /**
+     * Beware the broken naming : this method yields a ZIP archive !
+     * 
+     * @param extractionController
+     * @return
+     * @throws IOException 
+     */
     public File extractToCsv(ExtractionController extractionController) throws IOException {
         File tempExtractFile = File.createTempFile("tempExtract", "tmp");
         BufferedWriter bw = Files.newBufferedWriter(tempExtractFile.toPath(), StandardCharsets.UTF_8);
@@ -321,20 +324,29 @@ public class TransformationService {
             log.info("BufferedWriter closed");
         }
 
-        InputStream fileContent = new FileInputStream(tempExtractFile);
+        try(
+             InputStream fileContent = new FileInputStream(tempExtractFile);
+             ZipOutputStream zos = new ZipOutputStream(
+                 new FileOutputStream(
+                     FileNamesUtil.getFilePath(
+                         extractionController.getWorkingDirectory(), 
+                         getFileNameWithExtension(extractionController.getZIP_EXTENSION())
+                     )
+                 )
+             );
+           ) {
+          
+          log.info("Zipping up the extract file...");
 
-        log.info("Zipping up the extract file...");
-        ZipEntry zipEntry = new ZipEntry(getFileNameWithExtension(extractionController.getTXT_EXTENSION()));
-        zipEntry.setTime(System.currentTimeMillis());
-        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(FileNamesUtil.getFilePath(extractionController.getWorkingDirectory(), getFileNameWithExtension(extractionController.getZIP_EXTENSION()))));
-        zos.putNextEntry(zipEntry);
-        StreamUtils.copy(fileContent, zos);
+          MessageDigest extractEntryDigester = writeExtractEntry(extractionController, zos, fileContent);
 
-        fileContent.close();
-        zos.closeEntry();
-        zos.finish();
-        zos.close();
+          writeDigestEntry(zos, extractEntryDigester);
 
+          zos.finish();
+
+        } catch (NoSuchAlgorithmException ex) {
+          throw new RuntimeException("No SHA256 digest support in the current java runtime - please fix this."+ex.getMessage(),ex);
+        }
 
         if (tempExtractFile.delete()) {
             log.info("Temp file at " + tempExtractFile.getAbsolutePath() + " deleted");
@@ -358,6 +370,34 @@ public class TransformationService {
         return FileNamesUtil.getLatestExtract(extractionController.getFilesDirectory(),
                 getFileNameWithExtension(extractionController.getZIP_EXTENSION()));
     }
+
+  private void writeDigestEntry(final ZipOutputStream zos, MessageDigest extractEntryDigester) throws IOException {
+    ZipEntry digestEntry = new ZipEntry(getFileNameWithExtension(DIGEST_FILE_EXTENSION));
+    zos.putNextEntry(digestEntry);
+    byte[] hash = extractEntryDigester.digest();
+    for(int i=0;i<hash.length;i++){
+      zos.write(String.format("%02x",hash[i]).getBytes());
+    }
+    zos.closeEntry();
+  }
+
+  private MessageDigest writeExtractEntry(ExtractionController extractionController, final ZipOutputStream zos, final InputStream fileContent) throws IOException, NoSuchAlgorithmException {
+    ZipEntry zipEntry = new ZipEntry(getFileNameWithExtension(extractionController.getTXT_EXTENSION()));
+    zipEntry.setTime(System.currentTimeMillis());
+    zos.putNextEntry(zipEntry);
+    byte[] buffer=new byte[4096];
+    int nbCopied = fileContent.read(buffer);
+    MessageDigest digestEngine=MessageDigest.getInstance("SHA-256");
+    while(nbCopied>=0){
+      zos.write(buffer, 0, nbCopied);
+      // Why read twice when we can digest on the way.
+      digestEngine.update(buffer, 0, nbCopied);
+      nbCopied = fileContent.read(buffer);
+    }
+    zos.closeEntry();
+    return digestEngine;
+  }
+  private static final String DIGEST_FILE_EXTENSION = ".sha256";
 
     private String getCsvHeader() {
         return "Type d'identifiant PP|Identifiant PP|Identification nationale PP|Nom de famille|Prénoms|" +

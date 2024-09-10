@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022-2023 Agence du Numérique en Santé (ANS) (https://esante.gouv.fr)
+ * Copyright (C) 2022-2024 Agence du Numérique en Santé (ANS) (https://esante.gouv.fr)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,11 +35,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -138,6 +139,27 @@ public class ExtractionController {
 
   }
 
+  @PostMapping(value = "/upload/test", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<Void> uploadDemoExtractFile(@RequestParam("testFile") MultipartFile file) throws IOException {
+    File extractTestFile = new File(FileNamesUtil.getFilePath(filesDirectory, extractTestName));
+    if (extractTestFile.exists()) {
+      log.warn("Un fichier test existe déjà sur le serveur. Suppression du fichier");
+      Files.delete(extractTestFile.toPath());
+    }
+
+    try {
+      file.transferTo(extractTestFile);
+      log.info("Fichier de test téléversé avec succès");
+      return new ResponseEntity<>(HttpStatus.ACCEPTED);
+    } catch (IOException e) {
+      log.error("Error uploading file", e);
+      if (extractTestFile.exists()) {
+        Files.delete(extractTestFile.toPath());
+      }
+      return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @PostMapping(value = "/generate-extract")
   public ResponseEntity<?> generateExtract(@RequestParam(required = false) Integer pageSize) {
     if (!busy) {
@@ -154,14 +176,25 @@ public class ExtractionController {
           File latestExtract = transformationService.extractToCsv(this);
           FileNamesUtil.cleanup(filesDirectory, extractTestName);
 
+          // TODO : this is java not C. Please use exceptions, not return code checking.
           if (latestExtract != null) {
             emailService.sendSimpleMessage("PSCEXTRACT - sécurisation effectuée", latestExtract);
           }
           else {
             emailService.sendSimpleMessage("PSCEXTRACT - sécurisation échouée", null);
           }
-        } catch (IOException e) {
+        } catch (Exception e) {
           log.error("Exception raised :", e);
+          emailService.sendSimpleMessage("PSCEXTRACT - sécurisation échouée", null);
+        } catch (Error e) {
+          log.error("Exception raised :", e);
+            try {
+              log.error("Exception raised :", e);
+              emailService.sendSimpleMessage("PSCEXTRACT - sécurisation échouée", null);
+            } catch (Exception mailEx) {
+              e.addSuppressed(mailEx);
+            }
+            throw e;
         } finally {
             busy = false;
         }
@@ -190,6 +223,11 @@ public class ExtractionController {
       return "cleaning directory failed";
     }
 
+  }
+
+  @GetMapping(value = "/busy-check", produces = MediaType.APPLICATION_JSON_VALUE)
+  public boolean checkControllerIsBusy() {
+    return busy;
   }
 
   public String getZIP_EXTENSION() {

@@ -26,14 +26,14 @@
 	</parent>
 	<groupId>fr.ans.psc</groupId>
 	<artifactId>pscextract</artifactId>
-	<version>0.2.0</version>
+	<version>0.2.1-SNAPSHOT</version>
 	<name>pscextract</name>
 	<inceptionYear>2022-2024</inceptionYear>
 	<description>Demo project for Spring Boot</description>
 
         <scm>
           <connection>scm:git:${project.basedir}</connection>
-          <tag>0.2.0</tag>
+          <tag>HEAD</tag>
         </scm>
 
 	<properties>

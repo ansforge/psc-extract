@@ -38,6 +38,10 @@
 
 	<properties>
 		<java.version>11</java.version>
+                <!-- Because we use an older springboot version -->
+                <maven.compiler.target>${java.version}</maven.compiler.target>
+                <maven.compiler.source>${java.version}</maven.compiler.source>
+                <!-- End of old springboot version workaround -->
 	</properties>
 
 	<dependencies>

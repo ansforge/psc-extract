@@ -26,19 +26,18 @@
 	</parent>
 	<groupId>fr.ans.psc</groupId>
 	<artifactId>pscextract</artifactId>
-	<version>0.1.1</version>
+	<version>0.2.0</version>
 	<name>pscextract</name>
 	<inceptionYear>2022-2024</inceptionYear>
 	<description>Demo project for Spring Boot</description>
 
         <scm>
           <connection>scm:git:${project.basedir}</connection>
-          <tag>0.1.1</tag>
+          <tag>0.2.0</tag>
         </scm>
 
 	<properties>
 		<java.version>11</java.version>
-                <filepath.starting.point>1</filepath.starting.point>
 	</properties>
 
 	<dependencies>
@@ -59,7 +58,7 @@
 		<dependency>
 			<groupId>com.github.tomakehurst</groupId>
 			<artifactId>wiremock-jre8</artifactId>
-			<version>2.32.0</version>
+			<version>2.35.1</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -128,13 +127,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<argLine>-Xmx4g</argLine>
-                                        <systemProperties>
-                                          <property>
-                                            <name>filepath.starting.point</name>
-                                            <value>${filepath.starting.point}</value>
-                                          </property>
-                                        </systemProperties>
+					<argLine>-Xmx4g @{argLine}</argLine>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -201,7 +194,7 @@
 				<artifactId>maven-failsafe-plugin</artifactId>
 				<configuration>
 					<argLine>
-						--illegal-access=permit
+						--illegal-access=permit @{argLine}
 					</argLine>
 				</configuration>
 			</plugin>
@@ -223,21 +216,5 @@
 			<url>https://maven.pkg.github.com/ansforge/psc-components</url>
 		</repository>
 	</repositories>
-        <profiles>
-          <!-- 
-            This profile is a minimal workaround to fix some broken tests in maintenance branches.
-            A much better FIX has already been merged intop main, but we want minimal change here.
-          -->
-          <profile>
-            <id>linux-workaround</id>
-            <activation>
-              <os>
-                <family>unix</family>
-              </os>
-            </activation>
-            <properties>
-              <filepath.starting.point>0</filepath.starting.point>
-            </properties>
-          </profile>
-        </profiles>
+
 </project>

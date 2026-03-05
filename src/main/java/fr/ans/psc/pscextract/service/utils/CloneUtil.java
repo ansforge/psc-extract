@@ -15,6 +15,7 @@
  */
 package fr.ans.psc.pscextract.service.utils;
 
+import fr.ans.psc.model.AlternativeIdentifier;
 import fr.ans.psc.model.Expertise;
 import fr.ans.psc.model.FirstName;
 import fr.ans.psc.model.Profession;
@@ -59,6 +60,9 @@ public class CloneUtil {
 
     if (sourcePs.getIds() != null) {
       targetPs.setIds(new ArrayList<>(sourcePs.getIds()));
+    }
+    if (sourcePs.getAlternativeIds() != null) {
+      targetPs.setAlternativeIds(new ArrayList<>(sourcePs.getAlternativeIds()));
     }
     targetPs.setActivated(sourcePs.getActivated());
     targetPs.setDeactivated(sourcePs.getDeactivated());

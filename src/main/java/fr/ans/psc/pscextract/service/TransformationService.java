@@ -269,7 +269,12 @@ public class TransformationService {
         } else {
             sb.append("|".repeat(36));
         }
-        sb.append(Optional.ofNullable(transformAlternativeIdsToString(ps.getAlternativeIds())).orElse("")).append("|");
+        List<AlternativeIdentifier> altIds = ps.getAlternativeIds();
+        if (altIds != null && !altIds.isEmpty()) {
+            sb.append(transformAlternativeIdsToString(altIds)).append("|");
+        } else {
+            sb.append(transformIdsToString(ps.getIds())).append("|");
+        }
         sb.append(Optional.ofNullable(activityCode).orElse("")).append("|");
         sb.append("\n");
 

@@ -184,8 +184,8 @@ public class TransformationService {
     public String transformPsToLine(Ps ps, String id) {
         String activityCode = null;
         StringBuilder sb = new StringBuilder();
-        if (id.charAt(0) == '0') {
-            // Identifiant PSI (UUID préfixé par '0') : colonne type vide, identifiant complet
+        if (id.charAt(0) == '0' && id.contains("-")) {
+            // Identifiant PSI (UUID préfixé par '0', format avec tirets) : colonne type vide, identifiant complet
             sb.append("").append("|");
             sb.append(id).append("|");
         } else {

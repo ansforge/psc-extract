@@ -209,9 +209,9 @@ public class TransformationService {
             sb.append(Optional.ofNullable(profession.getCode()).orElse("")).append("|");
             sb.append(Optional.ofNullable(profession.getCategoryCode()).orElse("")).append("|");
             sb.append(Optional.ofNullable(profession.getSalutationCode()).orElse("")).append("|");
-            String exerciseLastName = (profession.getLastName() != null && !profession.getLastName().isEmpty())
+            String exerciseLastName = (profession.getLastName() != null && !profession.getLastName().isBlank())
                     ? profession.getLastName() : Optional.ofNullable(ps.getLastName()).orElse("");
-            String exerciseFirstName = (profession.getFirstName() != null && !profession.getFirstName().isEmpty())
+            String exerciseFirstName = (profession.getFirstName() != null && !profession.getFirstName().isBlank())
                     ? profession.getFirstName() : getFirstFirstName(ps.getFirstNames());
             sb.append(exerciseLastName).append("|");
             sb.append(exerciseFirstName).append("|");
@@ -267,7 +267,11 @@ public class TransformationService {
                 sb.append("|".repeat(29));
             }
         } else {
-            sb.append("|".repeat(36));
+            // Pas de profession : on remplit quand même Nom/Prénom d'exercice avec les données du PS
+            sb.append("|".repeat(3)); // code profession, catégorie, civilité d'exercice
+            sb.append(Optional.ofNullable(ps.getLastName()).orElse("")).append("|");
+            sb.append(getFirstFirstName(ps.getFirstNames())).append("|");
+            sb.append("|".repeat(31)); // colonnes restantes
         }
         List<AlternativeIdentifier> altIds = ps.getAlternativeIds();
         if (altIds != null && !altIds.isEmpty()) {

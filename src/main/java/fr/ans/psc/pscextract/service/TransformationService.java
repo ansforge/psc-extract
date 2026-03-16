@@ -15,6 +15,7 @@
  */
 package fr.ans.psc.pscextract.service;
 
+import fr.ans.psc.model.AlternativeIdentifier;
 import fr.ans.psc.model.Expertise;
 import fr.ans.psc.model.FirstName;
 import fr.ans.psc.model.Profession;
@@ -104,6 +105,31 @@ public class TransformationService {
         return sb.toString();
     }
 
+    public String transformAlternativeIdsToString(List<AlternativeIdentifier> alternativeIds) {
+        if (alternativeIds == null)
+            return "";
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < alternativeIds.size(); i++) {
+            AlternativeIdentifier altId = alternativeIds.get(i);
+            sb.append(Optional.ofNullable(altId.getIdentifier()).orElse(""));
+            sb.append(',').append(Optional.ofNullable(altId.getOrigine()).orElse(""));
+            sb.append(',').append(Optional.ofNullable(altId.getQuality()).map(Object::toString).orElse(""));
+            if (i != alternativeIds.size() - 1) {
+                sb.append(";");
+            }
+        }
+        return sb.toString();
+    }
+
+    private String getFirstFirstName(List<FirstName> firstNames) {
+        if (firstNames == null || firstNames.isEmpty()) return "";
+        return firstNames.stream()
+                .min(Comparator.comparing(FirstName::getOrder))
+                .map(FirstName::getFirstName)
+                .orElse("");
+    }
+
     public String transformFirstNamesToStringWithApostrophes(List<FirstName> firstNames) {
         if (firstNames != null) {
             firstNames.sort(Comparator.comparing(FirstName::getOrder));
@@ -158,8 +184,14 @@ public class TransformationService {
     public String transformPsToLine(Ps ps, String id) {
         String activityCode = null;
         StringBuilder sb = new StringBuilder();
-        sb.append(id.charAt(0)).append("|");
-        sb.append(id.substring(1)).append("|");
+        if (id.charAt(0) == '0' && id.contains("-")) {
+            // Identifiant PSI (UUID préfixé par '0', format avec tirets) : colonne type vide, identifiant complet
+            sb.append("").append("|");
+            sb.append(id).append("|");
+        } else {
+            sb.append(id.charAt(0)).append("|");
+            sb.append(id.substring(1)).append("|");
+        }
         sb.append(Optional.ofNullable(id).orElse("")).append("|");
         sb.append(Optional.ofNullable(ps.getLastName()).orElse("")).append("|");
         sb.append(Optional.ofNullable(transformFirstNamesToStringWithApostrophes(ps.getFirstNames())).orElse("''")).append("|");
@@ -177,8 +209,12 @@ public class TransformationService {
             sb.append(Optional.ofNullable(profession.getCode()).orElse("")).append("|");
             sb.append(Optional.ofNullable(profession.getCategoryCode()).orElse("")).append("|");
             sb.append(Optional.ofNullable(profession.getSalutationCode()).orElse("")).append("|");
-            sb.append(Optional.ofNullable(profession.getLastName()).orElse("")).append("|");
-            sb.append(Optional.ofNullable(profession.getFirstName()).orElse("")).append("|");
+            String exerciseLastName = (profession.getLastName() != null && !profession.getLastName().isBlank())
+                    ? profession.getLastName() : Optional.ofNullable(ps.getLastName()).orElse("");
+            String exerciseFirstName = (profession.getFirstName() != null && !profession.getFirstName().isBlank())
+                    ? profession.getFirstName() : getFirstFirstName(ps.getFirstNames());
+            sb.append(exerciseLastName).append("|");
+            sb.append(exerciseFirstName).append("|");
 
             if (profession.getExpertises() != null && profession.getExpertises().get(0) != null) {
                 Expertise expertise = profession.getExpertises().get(0);
@@ -231,9 +267,18 @@ public class TransformationService {
                 sb.append("|".repeat(29));
             }
         } else {
-            sb.append("|".repeat(36));
+            // Pas de profession : on remplit quand même Nom/Prénom d'exercice avec les données du PS
+            sb.append("|".repeat(3)); // code profession, catégorie, civilité d'exercice
+            sb.append(Optional.ofNullable(ps.getLastName()).orElse("")).append("|");
+            sb.append(getFirstFirstName(ps.getFirstNames())).append("|");
+            sb.append("|".repeat(31)); // colonnes restantes
         }
-        sb.append(Optional.ofNullable(transformIdsToString(ps.getIds())).orElse("")).append("|");
+        List<AlternativeIdentifier> altIds = ps.getAlternativeIds();
+        if (altIds != null && !altIds.isEmpty()) {
+            sb.append(transformAlternativeIdsToString(altIds)).append("|");
+        } else {
+            sb.append(transformIdsToString(ps.getIds())).append("|");
+        }
         sb.append(Optional.ofNullable(activityCode).orElse("")).append("|");
         sb.append("\n");
 
@@ -283,8 +328,15 @@ public class TransformationService {
                 tempPsList = unwind(responsePsList);
 
                 for (Ps ps : tempPsList) {
-                    for (String id : ps.getIds()) {
-                        bw.write(transformPsToLine(ps, id));
+                    List<AlternativeIdentifier> altIds = ps.getAlternativeIds();
+                    if (altIds != null && !altIds.isEmpty()) {
+                        for (AlternativeIdentifier altId : altIds) {
+                            bw.write(transformPsToLine(ps, altId.getIdentifier()));
+                        }
+                    } else {
+                        for (String id : ps.getIds()) {
+                            bw.write(transformPsToLine(ps, id));
+                        }
                     }
                     log.trace("Ps " + ps.getId() + " transformed and written");
                 }

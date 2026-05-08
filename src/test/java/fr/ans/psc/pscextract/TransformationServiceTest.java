@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @ContextConfiguration(classes = PscextractApplication.class)
-public class TransformationServiceTest {
+class TransformationServiceTest {
 
     @Autowired
     TransformationService transformationService;
@@ -42,7 +42,7 @@ public class TransformationServiceTest {
     }
 
     @Test
-    public void transformFirstNamesTest() {
+    void transformFirstNamesTest() {
         FirstName fn1 = new FirstName("KADER", 0);
         FirstName fn2 = new FirstName("HASSAN", 1);
         FirstName fn3 = new FirstName("JOHNNY", 2);

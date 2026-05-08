@@ -146,7 +146,7 @@ public class TransformationService {
         return extractName + "_" + extractTime + fileExtension;
     }
 
-    public ArrayList<Ps> unwind(List<Ps> psList) {
+    public List<Ps> unwind(List<Ps> psList) {
         ArrayList<Ps> unwoundPsList = new ArrayList<>();
         Ps tempPs;
         for (Ps ps : psList) {
@@ -182,8 +182,18 @@ public class TransformationService {
     }
 
     public String transformPsToLine(Ps ps, String id) {
-        String activityCode = null;
         StringBuilder sb = new StringBuilder();
+        appendIdFields(sb, id);
+        appendPsFields(sb, ps, id);
+        String activityCode = appendProfessionFields(sb, ps);
+        appendAlternativeOrRegularIds(sb, ps);
+        sb.append(Optional.ofNullable(activityCode).orElse("")).append("|");
+        sb.append("\n");
+
+        return sb.toString();
+    }
+
+    private void appendIdFields(StringBuilder sb, String id) {
         if (id.charAt(0) == '0' && id.contains("-")) {
             // Identifiant PSI (UUID préfixé par '0', format avec tirets) : colonne type vide, identifiant complet
             sb.append("").append("|");
@@ -192,6 +202,9 @@ public class TransformationService {
             sb.append(id.charAt(0)).append("|");
             sb.append(id.substring(1)).append("|");
         }
+    }
+
+    private void appendPsFields(StringBuilder sb, Ps ps, String id) {
         sb.append(Optional.ofNullable(id).orElse("")).append("|");
         sb.append(Optional.ofNullable(ps.getLastName()).orElse("")).append("|");
         sb.append(Optional.ofNullable(transformFirstNamesToStringWithApostrophes(ps.getFirstNames())).orElse("''")).append("|");
@@ -203,86 +216,98 @@ public class TransformationService {
         sb.append(Optional.ofNullable(ps.getPhone()).orElse("")).append("|");
         sb.append(Optional.ofNullable(ps.getEmail()).orElse("")).append("|");
         sb.append(Optional.ofNullable(ps.getSalutationCode()).orElse("")).append("|");
+    }
 
-        if (ps.getProfessions() != null && ps.getProfessions().get(0) != null) {
-            Profession profession = ps.getProfessions().get(0);
-            sb.append(Optional.ofNullable(profession.getCode()).orElse("")).append("|");
-            sb.append(Optional.ofNullable(profession.getCategoryCode()).orElse("")).append("|");
-            sb.append(Optional.ofNullable(profession.getSalutationCode()).orElse("")).append("|");
-            String exerciseLastName = (profession.getLastName() != null && !profession.getLastName().isBlank())
-                    ? profession.getLastName() : Optional.ofNullable(ps.getLastName()).orElse("");
-            String exerciseFirstName = (profession.getFirstName() != null && !profession.getFirstName().isBlank())
-                    ? profession.getFirstName() : getFirstFirstName(ps.getFirstNames());
-            sb.append(exerciseLastName).append("|");
-            sb.append(exerciseFirstName).append("|");
-
-            if (profession.getExpertises() != null && profession.getExpertises().get(0) != null) {
-                Expertise expertise = profession.getExpertises().get(0);
-                sb.append(Optional.ofNullable(expertise.getTypeCode()).orElse("")).append("|");
-                sb.append(Optional.ofNullable(expertise.getCode()).orElse("")).append("|");
-            } else {
-                sb.append("|".repeat(2));
-            }
-
-            if (profession.getWorkSituations() != null && profession.getWorkSituations().get(0) != null) {
-                WorkSituation workSituation = profession.getWorkSituations().get(0);
-                sb.append(Optional.ofNullable(workSituation.getModeCode()).orElse("")).append("|");
-                sb.append(Optional.ofNullable(workSituation.getActivitySectorCode()).orElse("")).append("|");
-                sb.append(Optional.ofNullable(workSituation.getPharmacistTableSectionCode()).orElse("")).append("|");
-                sb.append(Optional.ofNullable(workSituation.getRoleCode()).orElse("")).append("|");
-
-                if (workSituation.getStructure() != null) {
-                    Structure structure = workSituation.getStructure();
-                    sb.append(Optional.ofNullable(structure.getSiteSIRET()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getSiteSIREN()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getSiteFINESS()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getLegalEstablishmentFINESS()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getStructureTechnicalId()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getLegalCommercialName()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getPublicCommercialName()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getRecipientAdditionalInfo()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getGeoLocationAdditionalInfo()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getStreetNumber()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getStreetNumberRepetitionIndex()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getStreetCategoryCode()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getStreetLabel()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getDistributionMention()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getCedexOffice()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getPostalCode()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getCommuneCode()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getCountryCode()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getPhone()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getPhone2()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getFax()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getEmail()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getDepartmentCode()).orElse("")).append("|");
-                    sb.append(Optional.ofNullable(structure.getOldStructureId()).orElse("")).append("|");
-                } else {
-                    sb.append("|".repeat(24));
-                }
-                sb.append(Optional.ofNullable(workSituation.getRegistrationAuthority()).orElse("")).append("|");
-                activityCode = (Optional.ofNullable(workSituation.getActivityKindCode()).orElse(""));
-
-            } else {
-                sb.append("|".repeat(29));
-            }
-        } else {
+    private String appendProfessionFields(StringBuilder sb, Ps ps) {
+        if (ps.getProfessions() == null || ps.getProfessions().get(0) == null) {
             // Pas de profession : on remplit quand même Nom/Prénom d'exercice avec les données du PS
             sb.append("|".repeat(3)); // code profession, catégorie, civilité d'exercice
             sb.append(Optional.ofNullable(ps.getLastName()).orElse("")).append("|");
             sb.append(getFirstFirstName(ps.getFirstNames())).append("|");
             sb.append("|".repeat(31)); // colonnes restantes
+            return null;
         }
+
+        Profession profession = ps.getProfessions().get(0);
+        sb.append(Optional.ofNullable(profession.getCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(profession.getCategoryCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(profession.getSalutationCode()).orElse("")).append("|");
+        String exerciseLastName = (profession.getLastName() != null && !profession.getLastName().isBlank())
+                ? profession.getLastName() : Optional.ofNullable(ps.getLastName()).orElse("");
+        String exerciseFirstName = (profession.getFirstName() != null && !profession.getFirstName().isBlank())
+                ? profession.getFirstName() : getFirstFirstName(ps.getFirstNames());
+        sb.append(exerciseLastName).append("|");
+        sb.append(exerciseFirstName).append("|");
+
+        appendExpertiseFields(sb, profession);
+        return appendWorkSituationFields(sb, profession);
+    }
+
+    private void appendExpertiseFields(StringBuilder sb, Profession profession) {
+        if (profession.getExpertises() != null && profession.getExpertises().get(0) != null) {
+            Expertise expertise = profession.getExpertises().get(0);
+            sb.append(Optional.ofNullable(expertise.getTypeCode()).orElse("")).append("|");
+            sb.append(Optional.ofNullable(expertise.getCode()).orElse("")).append("|");
+        } else {
+            sb.append("|".repeat(2));
+        }
+    }
+
+    private String appendWorkSituationFields(StringBuilder sb, Profession profession) {
+        if (profession.getWorkSituations() == null || profession.getWorkSituations().get(0) == null) {
+            sb.append("|".repeat(29));
+            return null;
+        }
+
+        WorkSituation workSituation = profession.getWorkSituations().get(0);
+        sb.append(Optional.ofNullable(workSituation.getModeCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(workSituation.getActivitySectorCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(workSituation.getPharmacistTableSectionCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(workSituation.getRoleCode()).orElse("")).append("|");
+
+        appendStructureFields(sb, workSituation.getStructure());
+        sb.append(Optional.ofNullable(workSituation.getRegistrationAuthority()).orElse("")).append("|");
+        return Optional.ofNullable(workSituation.getActivityKindCode()).orElse("");
+    }
+
+    private void appendStructureFields(StringBuilder sb, Structure structure) {
+        if (structure == null) {
+            sb.append("|".repeat(24));
+            return;
+        }
+        sb.append(Optional.ofNullable(structure.getSiteSIRET()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getSiteSIREN()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getSiteFINESS()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getLegalEstablishmentFINESS()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getStructureTechnicalId()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getLegalCommercialName()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getPublicCommercialName()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getRecipientAdditionalInfo()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getGeoLocationAdditionalInfo()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getStreetNumber()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getStreetNumberRepetitionIndex()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getStreetCategoryCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getStreetLabel()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getDistributionMention()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getCedexOffice()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getPostalCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getCommuneCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getCountryCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getPhone()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getPhone2()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getFax()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getEmail()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getDepartmentCode()).orElse("")).append("|");
+        sb.append(Optional.ofNullable(structure.getOldStructureId()).orElse("")).append("|");
+    }
+
+    private void appendAlternativeOrRegularIds(StringBuilder sb, Ps ps) {
         List<AlternativeIdentifier> altIds = ps.getAlternativeIds();
         if (altIds != null && !altIds.isEmpty()) {
             sb.append(transformAlternativeIdsToString(altIds)).append("|");
         } else {
             sb.append(transformIdsToString(ps.getIds())).append("|");
         }
-        sb.append(Optional.ofNullable(activityCode).orElse("")).append("|");
-        sb.append("\n");
-
-        return sb.toString();
     }
 
     public void setExtractionTime() {

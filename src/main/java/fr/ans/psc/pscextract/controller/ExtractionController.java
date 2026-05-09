@@ -230,11 +230,11 @@ public class ExtractionController {
     return busy;
   }
 
-  public String getZIP_EXTENSION() {
+  public String getZipExtension() {
     return ".zip";
   }
 
-  public String getTXT_EXTENSION() {
+  public String getTxtExtension() {
     return ".txt";
   }
 

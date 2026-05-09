@@ -63,7 +63,7 @@ public class FileNamesUtil {
     listOfFiles.removeIf(file -> file.getName().contains(exceptFile));
     listOfFiles.sort(FileNamesUtil::compare);
 
-    if (listOfFiles.size() > 0) {
+    if (!listOfFiles.isEmpty()) {
       listOfFiles.remove(listOfFiles.size() - 1);
     }
 

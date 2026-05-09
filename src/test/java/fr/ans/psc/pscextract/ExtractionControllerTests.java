@@ -30,6 +30,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -107,10 +109,15 @@ class ExtractionControllerTests {
     await().until(controllerIsReady(controller));
   }
 
-  @Test
-  void singlePageExtractionAndResultConformityTest() throws Exception {
+  @ParameterizedTest
+  @CsvSource({
+      "multiple-work-situations.json, multiple-work-situations-result",
+      "empty-ps.json, empty-ps-result",
+      "very-empty-ps.json, very-empty-ps-result"
+  })
+  void singlePageExtractionAndResultConformityTest(String inputFile, String expectedResultFile) throws Exception {
 
-    httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("multiple-work-situations.json")));
+    httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile(inputFile)));
     httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(410)));
 
     controller.generateExtract(null);
@@ -118,7 +125,7 @@ class ExtractionControllerTests {
 
     ResponseEntity<FileSystemResource> response = controller.getFile();
 
-    String expected = getContentAsString("multiple-work-situations-result");
+    String expected = getContentAsString(expectedResultFile);
     String actual = getDataEntryAsString(response);
     Assertions.assertEquals(expected, actual);
   }
@@ -153,38 +160,7 @@ class ExtractionControllerTests {
     Assertions.assertThrows(NullPointerException.class, () -> System.out.println(Objects.requireNonNull(response.getBody())));
   }
 
-  @Test
-//  @Disabled //FIXME please tell why !!! Disabled tests hsould disappear or get fixed, prefably the latter.
-  void emptyPsExtractionTest() throws Exception {
 
-    httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("empty-ps.json")));
-    httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(410)));
-
-    controller.generateExtract(null);
-    await().until(controllerIsReady(controller));
-
-    ResponseEntity<FileSystemResource> response = controller.getFile();
-
-    String expected = getContentAsString("empty-ps-result");
-    String actual = getDataEntryAsString(response);
-    Assertions.assertEquals(expected, actual);
-  }
-
-  @Test
-  void fullyEmptyPsExtractionTest() throws Exception {
-
-    httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("very-empty-ps.json")));
-    httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(410)));
-
-    controller.generateExtract(null);
-    await().until(controllerIsReady(controller));
-
-    ResponseEntity<FileSystemResource> response = controller.getFile();
-
-    String expected = getContentAsString("very-empty-ps-result");
-    String actual = getDataEntryAsString(response);
-    Assertions.assertEquals(expected, actual);
-  }
 
   @Test
   void testUploadDemoExtractFile() throws Exception {

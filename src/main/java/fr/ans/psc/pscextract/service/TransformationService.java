@@ -382,7 +382,7 @@ public class TransformationService {
                  new FileOutputStream(
                      FileNamesUtil.getFilePath(
                          extractionController.getWorkingDirectory(), 
-                         getFileNameWithExtension(extractionController.getZIP_EXTENSION())
+                         getFileNameWithExtension(extractionController.getZipExtension())
                      )
                  )
              );
@@ -409,18 +409,19 @@ public class TransformationService {
         Files.move(
                 Path.of(FileNamesUtil.getFilePath(
                         extractionController.getWorkingDirectory(),
-                        getFileNameWithExtension(extractionController.getZIP_EXTENSION()))),
+                        getFileNameWithExtension(extractionController.getZipExtension()))),
                 Path.of(FileNamesUtil.getFilePath(
                         extractionController.getFilesDirectory(),
-                        getFileNameWithExtension(extractionController.getZIP_EXTENSION()))));
+                        getFileNameWithExtension(extractionController.getZipExtension()))));
 
-        log.info("File at " + FileNamesUtil.getFilePath(extractionController.getWorkingDirectory(),
-                getFileNameWithExtension(extractionController.getZIP_EXTENSION()))
-                + " moved to " + FileNamesUtil.getFilePath(extractionController.getFilesDirectory(),
-                getFileNameWithExtension(extractionController.getZIP_EXTENSION())));
+        log.info("File at {} moved to {}",
+                FileNamesUtil.getFilePath(extractionController.getWorkingDirectory(),
+                        getFileNameWithExtension(extractionController.getZipExtension())),
+                FileNamesUtil.getFilePath(extractionController.getFilesDirectory(),
+                        getFileNameWithExtension(extractionController.getZipExtension())));
 
         return FileNamesUtil.getLatestExtract(extractionController.getFilesDirectory(),
-                getFileNameWithExtension(extractionController.getZIP_EXTENSION()));
+                getFileNameWithExtension(extractionController.getZipExtension()));
     }
 
   private void writeDigestEntry(final ZipOutputStream zos, MessageDigest extractEntryDigester) throws IOException {
@@ -434,7 +435,7 @@ public class TransformationService {
   }
 
   private MessageDigest writeExtractEntry(ExtractionController extractionController, final ZipOutputStream zos, final InputStream fileContent) throws IOException, NoSuchAlgorithmException {
-    ZipEntry zipEntry = new ZipEntry(getFileNameWithExtension(extractionController.getTXT_EXTENSION()));
+    ZipEntry zipEntry = new ZipEntry(getFileNameWithExtension(extractionController.getTxtExtension()));
     zipEntry.setTime(System.currentTimeMillis());
     zos.putNextEntry(zipEntry);
     byte[] buffer=new byte[4096];

@@ -75,7 +75,7 @@ public class TransformationService {
         }
         switch (id.charAt(0)) {
             case ('1'):
-                // if (s.charAt(1) == '0') return s+','+"MSSante"+','+'1';
+                // 
                 return id + ',' + "ADELI" + ',' + '1';
             case ('3'):
                 return id + ',' + "FINESS" + ',' + '1';
@@ -341,23 +341,9 @@ public class TransformationService {
                     log.trace("Ps " + ps.getId() + " transformed and written");
                 }
                 page++;
-                try {
-                    response = extractionController.getPsApi().getPsByPage(BigDecimal.valueOf(page), size);
-                    log.debug("Page " + page + " of size " + size + " received, writing to file...");
-                } catch (HttpStatusCodeException e) {
-                    log.warn("Out of pages: " + e.getMessage());
-                    if (e.getStatusCode() != HttpStatus.GONE) {
-                        log.info("Extraction failed, exiting without replacing the extract file");
-                        if (tempExtractFile.delete()) {
-                            log.info("Temp file at " + tempExtractFile.getAbsolutePath() + " deleted");
-                        } else {
-                            log.warn("Temp file at " + tempExtractFile.getAbsolutePath() + " not deleted");
-                        }
-                        return null;
-                    }
+                response = fetchNextPage(extractionController, page, size);
+                if (response == null) {
                     outOfPages = true;
-                } catch (Exception e) {
-                    log.error("exception raised : ", e);
                 }
             } while (!outOfPages);
         } catch (HttpStatusCodeException e) {
@@ -397,7 +383,7 @@ public class TransformationService {
           zos.finish();
 
         } catch (NoSuchAlgorithmException ex) {
-          throw new RuntimeException("No SHA256 digest support in the current java runtime - please fix this."+ex.getMessage(),ex);
+          throw new IllegalStateException("No SHA256 digest support in the current java runtime - please fix this."+ex.getMessage(),ex);
         }
 
         if (tempExtractFile.delete()) {
@@ -421,6 +407,23 @@ public class TransformationService {
 
         return FileNamesUtil.getLatestExtract(extractionController.getFilesDirectory(),
                 getFileNameWithExtension(extractionController.getZIP_EXTENSION()));
+    }
+
+    private List<Ps> fetchNextPage(ExtractionController extractionController, int page, BigDecimal size) {
+        try {
+            List<Ps> response = extractionController.getPsApi().getPsByPage(BigDecimal.valueOf(page), size);
+            log.debug("Page " + page + " of size " + size + " received, writing to file...");
+            return response;
+        } catch (HttpStatusCodeException e) {
+            log.warn("Out of pages: " + e.getMessage());
+            if (e.getStatusCode() != HttpStatus.GONE) {
+                throw e;
+            }
+            return null;
+        } catch (Exception e) {
+            log.error("exception raised : ", e);
+            return Collections.emptyList();
+        }
     }
 
   private void writeDigestEntry(final ZipOutputStream zos, MessageDigest extractEntryDigester) throws IOException {

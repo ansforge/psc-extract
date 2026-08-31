@@ -7,7 +7,7 @@ extract mongodb collection into file, is also a webserver that exposes the file 
 ### Distribution history
 
 This ecosystem uses many independant components, some of which live an independant life in distinct repositories.
-For each release of `psc-extrract`, [the psc-components' distribution  history](https://github.com/ansforge/psc-components/blob/main/DISTRIBUTION.md) 
+For each release of `psc-extract`, [the psc-components' distribution  history](https://github.com/ansforge/psc-components/blob/main/DISTRIBUTION.md) 
 file will need to be updated with the new version, so that we can keep track of compatible component versions, 
 and go back to a previous working distribution if need be.
 

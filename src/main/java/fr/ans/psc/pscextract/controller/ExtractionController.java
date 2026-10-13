@@ -32,6 +32,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,7 +40,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
@@ -76,6 +84,22 @@ public class ExtractionController {
 
   @Value("${extract.name}")
   private String extractName;
+
+  /**
+   * Name of the EDIT partner extract, served next to the RASS extract from the "edit" sub-directory
+   * (the cleanup of the RASS extracts never goes into sub-directories).
+   */
+  @Value("${edit.extract.name:Extraction_EDIT_partenaire.zip}")
+  private String editExtractName;
+
+  /**
+   * Token EDIT must present to upload its extract. Empty means the upload is disabled.
+   */
+  @Value("${edit.upload.token:}")
+  private String editUploadToken;
+
+  private static final String EDIT_DIRECTORY = "edit";
+  private static final String UPLOAD_TOKEN_HEADER = "X-Upload-Token";
 
   /**
    * logger.
@@ -157,6 +181,85 @@ public class ExtractionController {
         Files.delete(extractTestFile.toPath());
       }
       return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @GetMapping(value = "/download/edit")
+  @ResponseBody
+  public ResponseEntity<FileSystemResource> getEditExtractFile() {
+    File editExtractFile = editExtractPath().toFile();
+
+    if (editExtractFile.exists()) {
+      HttpHeaders responseHeaders = new HttpHeaders();
+      responseHeaders.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + editExtractFile.getName());
+      responseHeaders.add(HttpHeaders.CONTENT_TYPE, "application/zip");
+      responseHeaders.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(editExtractFile.length()));
+
+      log.info("EDIT extract download done");
+      return new ResponseEntity<>(new FileSystemResource(editExtractFile), responseHeaders, HttpStatus.OK);
+    } else {
+      log.error("EDIT extract download failed : no file");
+      return new ResponseEntity<>(null, null, HttpStatus.NOT_FOUND);
+    }
+  }
+
+  @PostMapping(value = "/upload/edit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<Void> uploadEditExtractFile(
+          @RequestHeader(value = UPLOAD_TOKEN_HEADER, required = false) String token,
+          @RequestParam("file") MultipartFile file) {
+    if (editUploadToken.isEmpty()) {
+      log.error("EDIT extract upload refused : edit.upload.token is not configured");
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    if (token == null || !MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8), editUploadToken.getBytes(StandardCharsets.UTF_8))) {
+      log.warn("EDIT extract upload refused : missing or invalid token");
+      return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+    }
+    if (!looksLikeZip(file)) {
+      log.warn("EDIT extract upload refused : not a zip file");
+      return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+    }
+
+    Path target = editExtractPath();
+    Path temporary = null;
+    try {
+      Files.createDirectories(target.getParent());
+      temporary = Files.createTempFile(target.getParent(), "upload-", ".tmp");
+      file.transferTo(temporary);
+      try {
+        Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE);
+      } catch (AtomicMoveNotSupportedException e) {
+        Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+      }
+      log.info("EDIT extract uploaded successfully");
+      return new ResponseEntity<>(HttpStatus.ACCEPTED);
+    } catch (IOException e) {
+      log.error("Error uploading EDIT extract", e);
+      return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    } finally {
+      deleteQuietly(temporary);
+    }
+  }
+
+  private Path editExtractPath() {
+    return Paths.get(filesDirectory, EDIT_DIRECTORY, editExtractName);
+  }
+
+  private static boolean looksLikeZip(MultipartFile file) {
+    try (InputStream in = file.getInputStream()) {
+      return in.read() == 'P' && in.read() == 'K';
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  private static void deleteQuietly(Path path) {
+    if (path != null) {
+      try {
+        Files.deleteIfExists(path);
+      } catch (IOException e) {
+        log.warn("Could not delete temporary file {}", path, e);
+      }
     }
   }
 

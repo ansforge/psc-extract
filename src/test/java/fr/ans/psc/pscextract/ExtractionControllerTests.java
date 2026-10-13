@@ -42,6 +42,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 
@@ -68,6 +69,10 @@ class ExtractionControllerTests {
    * to avoid creating bogus diff during tests.
    */
   private static final String TEST_RESOURCE_DIRECTORY = "target/test-classes/work";
+  private static final String EDIT_UPLOAD_TOKEN = "edit-upload-token";
+  private static final String EDIT_EXTRACT_NAME = "Extraction_EDIT_partenaire.zip";
+  private static final Path EDIT_EXTRACT_PATH = Path.of(TEST_RESOURCE_DIRECTORY, "edit", EDIT_EXTRACT_NAME);
+  private static final byte[] EDIT_EXTRACT_CONTENT = {'P', 'K', 3, 4, 'e', 'd', 'i', 't'};
 
   @Autowired
   private ExtractionController controller;
@@ -98,6 +103,7 @@ class ExtractionControllerTests {
     propertiesRegistry.add("files.directory", () -> TEST_RESOURCE_DIRECTORY);
     propertiesRegistry.add("page.size", () -> "1");
     propertiesRegistry.add("first.name.count", () -> "3");
+    propertiesRegistry.add("edit.upload.token", () -> EDIT_UPLOAD_TOKEN);
 
   }
 
@@ -212,6 +218,103 @@ class ExtractionControllerTests {
     Files.delete(extractTestFile.toPath());
   }
 
+
+  private MockMultipartFile editUpload(byte[] content) {
+    return new MockMultipartFile("file", EDIT_EXTRACT_NAME, "application/zip", content);
+  }
+
+  @Test
+  void editExtractIsUploadedThenDownloadedBesideTheRassExtract() throws Exception {
+    mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                    .file(editUpload(EDIT_EXTRACT_CONTENT))
+                    .header("X-Upload-Token", EDIT_UPLOAD_TOKEN))
+            .andExpect(status().isAccepted());
+
+    assertThat(Files.readAllBytes(EDIT_EXTRACT_PATH)).isEqualTo(EDIT_EXTRACT_CONTENT);
+
+    var response = mockMvc.perform(MockMvcRequestBuilders.get("/download/edit"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse();
+    assertThat(response.getContentType()).isEqualTo("application/zip");
+    assertThat(response.getContentAsByteArray()).isEqualTo(EDIT_EXTRACT_CONTENT);
+  }
+
+  @Test
+  void aNewEditUploadReplacesThePreviousOne() throws Exception {
+    byte[] second = {'P', 'K', 3, 4, 's', 'e', 'c', 'o', 'n', 'd'};
+    for (byte[] content : new byte[][]{EDIT_EXTRACT_CONTENT, second}) {
+      mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                      .file(editUpload(content))
+                      .header("X-Upload-Token", EDIT_UPLOAD_TOKEN))
+              .andExpect(status().isAccepted());
+    }
+
+    assertThat(Files.readAllBytes(EDIT_EXTRACT_PATH)).isEqualTo(second);
+    try (var files = Files.list(EDIT_EXTRACT_PATH.getParent())) {
+      assertThat(files.map(path -> path.getFileName().toString())).containsExactly(EDIT_EXTRACT_NAME);
+    }
+  }
+
+  @Test
+  void editUploadIsRefusedWithAWrongOrMissingToken() throws Exception {
+    mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                    .file(editUpload(EDIT_EXTRACT_CONTENT))
+                    .header("X-Upload-Token", "wrong"))
+            .andExpect(status().isUnauthorized());
+    mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                    .file(editUpload(EDIT_EXTRACT_CONTENT)))
+            .andExpect(status().isUnauthorized());
+
+    assertThat(EDIT_EXTRACT_PATH).doesNotExist();
+  }
+
+  @Test
+  void editUploadIsDisabledWhenNoTokenIsConfigured() throws Exception {
+    ReflectionTestUtils.setField(controller, "editUploadToken", "");
+    try {
+      mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                      .file(editUpload(EDIT_EXTRACT_CONTENT))
+                      .header("X-Upload-Token", ""))
+              .andExpect(status().isServiceUnavailable());
+    } finally {
+      ReflectionTestUtils.setField(controller, "editUploadToken", EDIT_UPLOAD_TOKEN);
+    }
+
+    assertThat(EDIT_EXTRACT_PATH).doesNotExist();
+  }
+
+  @Test
+  void editUploadRefusesAFileThatIsNotAZip() throws Exception {
+    mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                    .file(editUpload("not a zip".getBytes(StandardCharsets.UTF_8)))
+                    .header("X-Upload-Token", EDIT_UPLOAD_TOKEN))
+            .andExpect(status().isBadRequest());
+
+    assertThat(EDIT_EXTRACT_PATH).doesNotExist();
+  }
+
+  @Test
+  void editDownloadIsNotFoundBeforeAnyUpload() throws Exception {
+    mockMvc.perform(MockMvcRequestBuilders.get("/download/edit"))
+            .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void rassExtractGenerationLeavesTheEditExtractAlone() throws Exception {
+    mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                    .file(editUpload(EDIT_EXTRACT_CONTENT))
+                    .header("X-Upload-Token", EDIT_UPLOAD_TOKEN))
+            .andExpect(status().isAccepted());
+    httpMockServer.stubFor(get("/v2/ps?page=0&size=1").willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBodyFile("page1size1.json")));
+    httpMockServer.stubFor(get("/v2/ps?page=1&size=1").willReturn(aResponse().withStatus(410)));
+
+    controller.generateExtract(null);
+    await().until(controllerIsReady(controller));
+
+    assertThat(Files.readAllBytes(EDIT_EXTRACT_PATH)).isEqualTo(EDIT_EXTRACT_CONTENT);
+    ResponseEntity<FileSystemResource> rassExtract = controller.getFile();
+    assertThat(Objects.requireNonNull(rassExtract.getBody()).getFile().getName()).isNotEqualTo(EDIT_EXTRACT_NAME);
+  }
 
   @Test
   void generateExtractTest() throws Exception {

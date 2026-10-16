@@ -23,6 +23,15 @@ propre extract.
   `pscextract.nomad.tpl`) et `edit.extract.name` (défaut `Extraction_EDIT_partenaire.zip`).
 - **Aucun impact** sur les routes existantes `/extract`, `/download` et `/cleanup`.
 
+### Modifié
+
+#### Limite de taille des dépôts
+- `spring.servlet.multipart.max-file-size` et `max-request-size` passent de 10 à 50 Mo, dans
+  `application.properties` **et** dans `pscextract.nomad.tpl` (qui surcharge ces deux propriétés en
+  environnement déployé). À 10 Mo, le dépôt nocturne d'EDIT aurait été refusé par un `413` dès que
+  l'extract aurait dépassé la limite, et le fichier publié serait resté figé sur la version de la
+  veille. La route `/upload/test` bénéficie de la même limite.
+
 ## [2026-04-29]
 
 ### Modifié

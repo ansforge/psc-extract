@@ -52,8 +52,6 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.Objects;
@@ -242,9 +240,10 @@ class ExtractionControllerTests {
   }
 
   @Test
-  void theEditExtractIsServedUnderATimestampedPartnerName() throws Exception {
+  void theEditExtractIsServedUnderTheNameItWasDepositedWith() throws Exception {
+    String deposited = "202611041354_Extract_RASS_PARTENAIRES_PSC.zip";
     mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
-                    .file(editUpload(EDIT_EXTRACT_CONTENT))
+                    .file(new MockMultipartFile("file", deposited, "application/zip", EDIT_EXTRACT_CONTENT))
                     .header("X-Upload-Token", EDIT_UPLOAD_TOKEN))
             .andExpect(status().isAccepted());
 
@@ -252,11 +251,19 @@ class ExtractionControllerTests {
             .andExpect(status().isOk())
             .andReturn().getResponse();
 
-    String expected = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
-            .withZone(ZoneId.systemDefault())
-            .format(Files.getLastModifiedTime(EDIT_EXTRACT_PATH).toInstant());
     assertThat(response.getHeader("Content-Disposition"))
-            .isEqualTo("attachment; filename=\"" + expected + "_Extract_RASS_PARTENAIRES_PSC.zip\"");
+            .isEqualTo("attachment; filename=\"" + deposited + "\"");
+    assertThat(response.getContentAsByteArray()).isEqualTo(EDIT_EXTRACT_CONTENT);
+  }
+
+  @Test
+  void aDepositNameThatCouldEscapeTheDirectoryIsRefused() throws Exception {
+    for (String name : new String[]{"../escaped.zip", "sub/dir.zip", "not-a-zip.txt"}) {
+      mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                      .file(new MockMultipartFile("file", name, "application/zip", EDIT_EXTRACT_CONTENT))
+                      .header("X-Upload-Token", EDIT_UPLOAD_TOKEN))
+              .andExpect(status().isBadRequest());
+    }
   }
 
   @Test

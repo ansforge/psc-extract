@@ -5,9 +5,12 @@
 ### Ajouté
 
 #### Nom partenaire de l'extract EDIT
-`GET /download/edit` sert désormais le fichier sous `yyyyMMddHHmm_Extract_RASS_PARTENAIRES_PSC.zip`,
-l'horodatage étant celui du dépôt. Le stockage garde un nom fixe, ce qui préserve le remplacement
-atomique et une route de téléchargement stable : seul l'en-tête `Content-Disposition` change.
+Le fichier est stocké et servi sous le nom qu'EDIT lui donne au dépôt, de la forme
+`yyyyMMddHHmm_Extract_RASS_PARTENAIRES_PSC.zip`. C'est EDIT qui décide de l'horodatage, pour qu'il
+soit identique à celui du CSV contenu dans le zip. Le dépôt ne conserve qu'un seul fichier :
+l'ancien est supprimé après le remplacement. Un nom contenant `/`, `\` ou `..`, ou qui ne finit pas
+par `.zip`, est refusé avec un `400` plutôt que corrigé silencieusement — sans quoi un dépôt
+malformé pourrait écrire hors du répertoire prévu.
 
 ### Corrigé
 

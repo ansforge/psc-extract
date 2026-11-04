@@ -48,9 +48,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
@@ -103,13 +102,6 @@ public class ExtractionController {
 
   private static final String EDIT_DIRECTORY = "edit";
 
-  /**
-   * The name partners download the EDIT extract under, timestamped with the deposit date.
-   * The file is stored under a fixed name so that the deposit stays a single atomic replace.
-   */
-  private static final String EDIT_DOWNLOAD_SUFFIX = "_Extract_RASS_PARTENAIRES_PSC.zip";
-  private static final DateTimeFormatter EDIT_DOWNLOAD_DATE =
-          DateTimeFormatter.ofPattern("yyyyMMddHHmm").withZone(ZoneId.systemDefault());
   private static final String UPLOAD_TOKEN_HEADER = "X-Upload-Token";
 
   /**
@@ -198,12 +190,12 @@ public class ExtractionController {
   @GetMapping(value = "/download/edit")
   @ResponseBody
   public ResponseEntity<FileSystemResource> getEditExtractFile() {
-    File editExtractFile = editExtractPath().toFile();
+    File editExtractFile = lastEditExtract();
 
-    if (editExtractFile.exists()) {
+    if (editExtractFile != null) {
       HttpHeaders responseHeaders = new HttpHeaders();
       responseHeaders.add(HttpHeaders.CONTENT_DISPOSITION,
-              "attachment; filename=\"" + editDownloadName(editExtractFile) + "\"");
+              "attachment; filename=\"" + editExtractFile.getName() + "\"");
       responseHeaders.add(HttpHeaders.CONTENT_TYPE, "application/zip");
       responseHeaders.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(editExtractFile.length()));
 
@@ -232,7 +224,13 @@ public class ExtractionController {
       return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
-    Path target = editExtractPath();
+    String depositName = depositName(file.getOriginalFilename());
+    if (depositName == null) {
+      log.warn("EDIT extract upload refused : unusable file name {}", file.getOriginalFilename());
+      return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+    }
+
+    Path target = editExtractDirectory().resolve(depositName);
     Path temporary = null;
     try {
       Files.createDirectories(target.getParent());
@@ -243,7 +241,8 @@ public class ExtractionController {
       } catch (AtomicMoveNotSupportedException e) {
         Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
       }
-      log.info("EDIT extract uploaded successfully");
+      deleteOtherEditExtracts(target);
+      log.info("EDIT extract uploaded successfully as {}", depositName);
       return new ResponseEntity<>(HttpStatus.ACCEPTED);
     } catch (IOException e) {
       log.error("Error uploading EDIT extract", e);
@@ -253,12 +252,48 @@ public class ExtractionController {
     }
   }
 
-  private String editDownloadName(File editExtractFile) {
-    return EDIT_DOWNLOAD_DATE.format(Instant.ofEpochMilli(editExtractFile.lastModified())) + EDIT_DOWNLOAD_SUFFIX;
+  /**
+   * The name EDIT deposits the file under, kept as is so that consumers download it unchanged.
+   * Anything that could escape the deposit directory is refused rather than sanitised, so a
+   * malformed deposit is visible instead of silently renamed.
+   */
+  private String depositName(String submitted) {
+    if (submitted == null || submitted.isBlank()) {
+      return editExtractName;
+    }
+    String name = submitted.trim();
+    if (name.contains("/") || name.contains("\\") || name.contains("..")
+            || !name.toLowerCase().endsWith(".zip")) {
+      return null;
+    }
+    return name;
   }
 
-  private Path editExtractPath() {
-    return Paths.get(filesDirectory, EDIT_DIRECTORY, editExtractName);
+  private Path editExtractDirectory() {
+    return Paths.get(filesDirectory, EDIT_DIRECTORY);
+  }
+
+  /**
+   * The deposit keeps a single file; the most recent one is what consumers get.
+   */
+  private File lastEditExtract() {
+    File[] deposited = editExtractDirectory().toFile().listFiles(File::isFile);
+    if (deposited == null || deposited.length == 0) {
+      return null;
+    }
+    return Arrays.stream(deposited).max(Comparator.comparingLong(File::lastModified)).orElse(null);
+  }
+
+  private void deleteOtherEditExtracts(Path kept) {
+    File[] deposited = editExtractDirectory().toFile().listFiles(File::isFile);
+    if (deposited == null) {
+      return;
+    }
+    for (File file : deposited) {
+      if (!file.toPath().equals(kept) && !file.delete()) {
+        log.warn("Could not delete the previous EDIT extract {}", file.getName());
+      }
+    }
   }
 
   private static boolean looksLikeZip(MultipartFile file) {

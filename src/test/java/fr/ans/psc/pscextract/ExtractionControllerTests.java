@@ -52,6 +52,8 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.Objects;
@@ -237,6 +239,24 @@ class ExtractionControllerTests {
             .andReturn().getResponse();
     assertThat(response.getContentType()).isEqualTo("application/zip");
     assertThat(response.getContentAsByteArray()).isEqualTo(EDIT_EXTRACT_CONTENT);
+  }
+
+  @Test
+  void theEditExtractIsServedUnderATimestampedPartnerName() throws Exception {
+    mockMvc.perform(MockMvcRequestBuilders.multipart("/upload/edit")
+                    .file(editUpload(EDIT_EXTRACT_CONTENT))
+                    .header("X-Upload-Token", EDIT_UPLOAD_TOKEN))
+            .andExpect(status().isAccepted());
+
+    var response = mockMvc.perform(MockMvcRequestBuilders.get("/download/edit"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse();
+
+    String expected = DateTimeFormatter.ofPattern("yyyyMMddHHmm")
+            .withZone(ZoneId.systemDefault())
+            .format(Files.getLastModifiedTime(EDIT_EXTRACT_PATH).toInstant());
+    assertThat(response.getHeader("Content-Disposition"))
+            .isEqualTo("attachment; filename=\"" + expected + "_Extract_RASS_PARTENAIRES_PSC.zip\"");
   }
 
   @Test

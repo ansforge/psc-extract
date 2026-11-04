@@ -2,6 +2,13 @@
 
 ## [2026-11-04]
 
+### Ajouté
+
+#### Nom partenaire de l'extract EDIT
+`GET /download/edit` sert désormais le fichier sous `yyyyMMddHHmm_Extract_RASS_PARTENAIRES_PSC.zip`,
+l'horodatage étant celui du dépôt. Le stockage garde un nom fixe, ce qui préserve le remplacement
+atomique et une route de téléchargement stable : seul l'en-tête `Content-Disposition` change.
+
 ### Corrigé
 
 #### Fixtures de test périmées

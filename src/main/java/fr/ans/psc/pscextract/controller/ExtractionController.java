@@ -48,6 +48,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
@@ -99,6 +102,14 @@ public class ExtractionController {
   private String editUploadToken;
 
   private static final String EDIT_DIRECTORY = "edit";
+
+  /**
+   * The name partners download the EDIT extract under, timestamped with the deposit date.
+   * The file is stored under a fixed name so that the deposit stays a single atomic replace.
+   */
+  private static final String EDIT_DOWNLOAD_SUFFIX = "_Extract_RASS_PARTENAIRES_PSC.zip";
+  private static final DateTimeFormatter EDIT_DOWNLOAD_DATE =
+          DateTimeFormatter.ofPattern("yyyyMMddHHmm").withZone(ZoneId.systemDefault());
   private static final String UPLOAD_TOKEN_HEADER = "X-Upload-Token";
 
   /**
@@ -191,7 +202,8 @@ public class ExtractionController {
 
     if (editExtractFile.exists()) {
       HttpHeaders responseHeaders = new HttpHeaders();
-      responseHeaders.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + editExtractFile.getName());
+      responseHeaders.add(HttpHeaders.CONTENT_DISPOSITION,
+              "attachment; filename=\"" + editDownloadName(editExtractFile) + "\"");
       responseHeaders.add(HttpHeaders.CONTENT_TYPE, "application/zip");
       responseHeaders.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(editExtractFile.length()));
 
@@ -239,6 +251,10 @@ public class ExtractionController {
     } finally {
       deleteQuietly(temporary);
     }
+  }
+
+  private String editDownloadName(File editExtractFile) {
+    return EDIT_DOWNLOAD_DATE.format(Instant.ofEpochMilli(editExtractFile.lastModified())) + EDIT_DOWNLOAD_SUFFIX;
   }
 
   private Path editExtractPath() {

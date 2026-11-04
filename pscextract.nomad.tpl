@@ -99,12 +99,13 @@ api.base.url={{ range service "${nomad_namespace}-psc-api-maj-v2" }}http://{{ .A
 
 extract.name=Extraction_Pro_sante_connect
 extract.test.name={{ with secret "psc-ecosystem/${nomad_namespace}/pscextract" }}{{ .Data.data.test_file_name }}{{ end }}
+edit.upload.token={{ with secret "psc-ecosystem/${nomad_namespace}/pscextract" }}{{ or .Data.data.edit_upload_token "" }}{{ end }}
 page.size=50000
 first.name.count=3
 server.servlet.context-path=/pscextract/v1
 
-spring.servlet.multipart.max-file-size=10MB
-spring.servlet.multipart.max-request-size=10MB
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
 
 spring.mail.host={{ with secret "psc-ecosystem/${nomad_namespace}/admin" }}{{ .Data.data.mail_server_host }}{{ end }}
 spring.mail.port={{ with secret "psc-ecosystem/${nomad_namespace}/admin" }}{{ .Data.data.mail_server_port }}{{ end }}

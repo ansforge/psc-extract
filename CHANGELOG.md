@@ -1,5 +1,16 @@
 # Changelog — psc-extract
 
+## [2026-11-04]
+
+### Corrigé
+
+#### Fixtures de test périmées
+`multiple-pages-result.txt` et son `.sha256` dataient d'avant les commits `cab6b15` et
+`3cfa012` (mars 2026), qui remplissent « Nom d'exercice » et « Prénom d'exercice » en se
+rabattant sur le nom légal du PS quand l'exercice n'en porte pas. Les fixtures n'avaient pas
+été régénérées, laissant trois tests de `ExtractionControllerTests` en échec depuis.
+Seules les colonnes 17 et 18 changent, sur 6 lignes ; le comportement du code n'est pas touché.
+
 ## [2026-10-13]
 
 ### Ajouté
